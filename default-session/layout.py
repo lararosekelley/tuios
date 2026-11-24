@@ -1,7 +1,6 @@
 """The default session layout and the rules for which tabs a space gets.
 
-Shared by the herdr default-session plugin and the tuios default-session
-script, so both multiplexers build the same tabs from layout.json.
+Used by session.py to build each session's workspaces from layout.json.
 """
 
 from __future__ import annotations

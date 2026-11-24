@@ -1,0 +1,16 @@
+# Repos `tui` opens a session for, one per line. ~ is expanded and # starts a comment.
+~/Code/personal/larakelley.com
+~/Code/personal/dotfiles
+~/Code/personal/git-stk
+~/Code/personal/navi
+~/Code/personal/review-bot
+~/Code/personal/callie
+~/Code/personal/jot
+~/Code/personal/woodshed
+~/Code/greylocklabs/web
+~/Code/greylocklabs/core
+~/Code/work/product
+~/Code/work/devops
+~/Code/work/gitops
+~/Code/work/infra
+~/Code/work/higharc.tools

@@ -5,8 +5,7 @@ import subprocess
 import tempfile
 import unittest
 
-REPO = Path(__file__).resolve().parents[2]
-SHARED = REPO / "content/.local/share/default-session"
+SESSION_DIR = Path(__file__).resolve().parents[1] / "default-session"
 
 
 def module(name, path):
@@ -16,8 +15,8 @@ def module(name, path):
     return result
 
 
-rules = module("default_session_layout", SHARED / "layout.py")
-LAYOUT = json.loads((SHARED / "layout.json").read_text())
+rules = module("default_session_layout", SESSION_DIR / "layout.py")
+LAYOUT = json.loads((SESSION_DIR / "layout.json").read_text())
 
 
 def checkout(origin):
@@ -119,16 +118,9 @@ class TabIconTest(unittest.TestCase):
         self.assertEqual(rules.display_name({"label": "plain"}), "plain")
 
 
-class MultiplexerScriptsTest(unittest.TestCase):
-    def test_both_scripts_load_the_shared_rules(self):
-        herdr = module(
-            "herdr_session",
-            REPO / "content/.config/herdr/local-plugins/default-session/session.py",
-        )
-        tuios = module(
-            "tuios_session", REPO / "content/.config/tuios/default-session/session.py"
-        )
-        self.assertEqual(herdr.load_layout(), LAYOUT)
+class SessionScriptTest(unittest.TestCase):
+    def test_script_loads_the_layout(self):
+        tuios = module("tuios_session", SESSION_DIR / "session.py")
         self.assertEqual(tuios.rules.load_layout(), LAYOUT)
 
 

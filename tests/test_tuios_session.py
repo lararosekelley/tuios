@@ -4,8 +4,7 @@ import tempfile
 import unittest
 from unittest import mock
 
-REPO = Path(__file__).resolve().parents[2]
-SCRIPT = REPO / "content/.config/tuios/default-session/session.py"
+SCRIPT = Path(__file__).resolve().parents[1] / "default-session/session.py"
 
 spec = importlib.util.spec_from_file_location("tuios_default_session", SCRIPT)
 session = importlib.util.module_from_spec(spec)

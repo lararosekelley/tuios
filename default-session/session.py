@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""tuios default session: the shared default-session layout, built in tuios.
+"""tuios default session: the layout in layout.json, built in tuios.
 
     session.py build SESSION...        build sessions holding only their first shell
     session.py apply SESSION           add every layout tab SESSION is missing
@@ -7,9 +7,9 @@
     session.py open [REPO...]          open home plus a session per repo, then rehydrate
     session.py set-agent NAME          save the harness `{agent}` panes run
 
-A herdr space is a tuios session and a herdr tab is a tuios workspace. Tabs,
-panes, and the rules for which tabs a session gets come from
-~/.local/share/default-session, which the herdr plugin reads too.
+Each repo gets a tuios session, and each layout tab a workspace in it. Tabs,
+panes, and the rules for which tabs a session gets come from layout.json and
+layout.py next to this script.
 
 Programs are typed into the pane's shell rather than exec'd, so quitting one
 leaves a usable prompt. A shell's command count (tuios shell integration) tells
@@ -28,10 +28,7 @@ import sys
 import time
 from pathlib import Path
 
-# ~/.config/tuios/default-session -> ~/.local/share/default-session
-SHARED_LAYOUT = (
-    Path(__file__).resolve().parents[3] / ".local" / "share" / "default-session"
-)
+LAYOUT_DIR = Path(__file__).resolve().parent
 STATE_DIR = Path(os.environ.get("XDG_STATE_HOME") or Path.home() / ".local" / "state")
 AGENT_FILE = STATE_DIR / "tui" / "agent"
 TUIOS = os.environ.get("TUIOS_BIN") or "tuios"
@@ -46,7 +43,7 @@ POLL_SECONDS = 0.2
 
 def load_rules():
     spec = importlib.util.spec_from_file_location(
-        "default_session_layout", SHARED_LAYOUT / "layout.py"
+        "default_session_layout", LAYOUT_DIR / "layout.py"
     )
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)

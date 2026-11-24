@@ -53,7 +53,7 @@ right = [
 active_underline = false
 
 [dock.custom.now-playing]
-command = "sh ~/.local/share/status-cells/now-playing.sh"
+command = "sh ~/.config/tuios/status-cells/now-playing.sh"
 refresh = "5s"
 max-width = 28
 fg = "bg"
@@ -63,22 +63,22 @@ cap_left = ""
 cap_right = ""
 
 [dock.custom.weather]
-command = "sh ~/.local/share/status-cells/weather.sh"
+command = "sh ~/.config/tuios/status-cells/weather.sh"
 fg = "cyan"
 refresh = "30m"
 
 [dock.custom.battery]
-command = "sh ~/.local/share/status-cells/battery.sh"
+command = "sh ~/.config/tuios/status-cells/battery.sh"
 fg = "green"
 refresh = "60s"
 
 [dock.custom.volume]
-command = "sh ~/.local/share/status-cells/volume.sh"
+command = "sh ~/.config/tuios/status-cells/volume.sh"
 fg = "yellow"
 refresh = "2s"
 
 [dock.custom.ip]
-command = "sh ~/.local/share/status-cells/ip.sh"
+command = "sh ~/.config/tuios/status-cells/ip.sh"
 fg = "blue"
 refresh = "60s"
 
@@ -140,7 +140,7 @@ type = "popup"
 command = "lazygit"
 description = "lazygit popup"
 
-# default session (default-session/session.py, opened by `tui` in ~/.functions)
+# default session (default-session/session.py, opened by bin/tui)
 # --------
 
 # prefix+d is tuios's detach, so building takes alt

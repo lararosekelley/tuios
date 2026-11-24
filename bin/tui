@@ -1,0 +1,224 @@
+#!/usr/bin/env bash
+
+# tui
+#
+# Opens a session per repo and attaches. Run `tui --help` for flags.
+#
+# `tui completions bash|fish` prints a completion script for that shell.
+# --------
+
+REPOS_FILE="$(dirname "$(readlink -f "$0")")/../repos"
+
+HERD_AGENTS=(claude codex opencode)
+
+# Repos to open unless --repos says otherwise, one per line in $REPOS_FILE,
+# with ~ expanded and # comments allowed.
+HERD_REPOS=()
+if [[ -f "$REPOS_FILE" ]]; then
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    line="${line%%#*}"
+    line="${line#"${line%%[![:space:]]*}"}"
+    line="${line%"${line##*[![:space:]]}"}"
+    [[ -n "$line" ]] && HERD_REPOS+=("${line/#\~/$HOME}")
+  done < "$REPOS_FILE"
+fi
+
+function tui() {
+  local usage="usage: tui [--agent name] [--repos path ...] [--reset] [--yes]"
+  local script="$HOME/.config/tuios/default-session/session.py"
+  local reset=false confirmed=false collecting=false
+  local agent=""
+  local repos=()
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --agent)
+        collecting=false
+        agent="${2:-}"
+        shift
+        ;;
+      --agent=*)
+        collecting=false
+        agent="${1#--agent=}"
+        ;;
+      --repos)
+        collecting=true
+        ;;
+      --reset)
+        collecting=false
+        reset=true
+        ;;
+      -y | --yes)
+        collecting=false
+        confirmed=true
+        ;;
+      -h | --help)
+        cat << EOF
+$usage
+
+Opens a tuios session per repo, plus a home session on ~, and attaches.
+Workspaces, splits, and programs come from the herdr default-session layout.
+
+  --agent name      Agent for the agents workspace: ${HERD_AGENTS[*]}. Saved
+                    for later runs; sessions already built keep theirs
+  --repos path ...  Repos to open, instead of the repos file
+  --reset           Move the saved sessions aside, then rebuild
+  -y, --yes         Skip the reset confirmation
+  -h, --help        Show this help
+EOF
+        return 0
+        ;;
+      -*)
+        echo "fatal: unknown option: $1"
+        echo "$usage"
+        return 1
+        ;;
+      *)
+        if [[ "$collecting" != true ]]; then
+          echo "fatal: pass repos with --repos, as in: tui --repos $1"
+          return 1
+        fi
+
+        repos+=("$1")
+        ;;
+    esac
+    shift
+  done
+
+  if ! command -v tuios &> /dev/null; then
+    echo "fatal: tuios must be installed"
+    return 1
+  fi
+
+  if [[ -n "$agent" ]]; then
+    if [[ " ${HERD_AGENTS[*]} " != *" $agent "* ]]; then
+      echo "fatal: unknown agent: $agent (expected one of: ${HERD_AGENTS[*]})"
+      return 1
+    fi
+
+    python3 "$script" set-agent "$agent" && echo "agent: $agent"
+  fi
+
+  if [[ ${#repos[@]} -eq 0 ]]; then
+    repos=("${HERD_REPOS[@]}")
+  fi
+
+  if [[ "$reset" == true ]]; then
+    # stopping the daemon from inside one of its panes would kill this shell
+    if [[ -n "${TUIOS_ENV:-}" ]]; then
+      echo "fatal: cannot reset from inside tuios, detach first with prefix+d"
+      return 1
+    fi
+
+    if [[ "$confirmed" != true ]]; then
+      local answer
+
+      read -r -p "reset the saved tuios sessions? every session is rebuilt [y/N] " answer
+
+      if [[ ! "$answer" =~ ^[Yy]$ ]]; then
+        echo "left alone"
+        return 1
+      fi
+    fi
+
+    # the daemon saves every session as it stops, so stop it before moving them
+    tuios kill-server &> /dev/null
+
+    local sessions="$HOME/.local/state/tuios/sessions"
+    local saved
+
+    mkdir -p "$sessions.bak"
+    for saved in "$sessions"/*.json; do
+      [[ -f "$saved" ]] && mv -f "$saved" "$sessions.bak/" && echo "moved aside: $(basename "$saved")"
+    done
+  fi
+
+  python3 "$script" open "${repos[@]}" || return 1
+
+  # already inside a tuios pane, so the new sessions are all that was needed
+  if [[ -n "${TUIOS_ENV:-}" ]]; then
+    return 0
+  fi
+
+  tuios attach home
+}
+
+case "${1-}" in
+  --list-agents)
+    printf '%s\n' "${HERD_AGENTS[@]}"
+    exit 0
+    ;;
+  --list-repos)
+    printf '%s\n' "${HERD_REPOS[@]}"
+    exit 0
+    ;;
+  completions)
+    case "${2-}" in
+      bash)
+        cat << 'EOF'
+function _tui() {
+  local current="${COMP_WORDS[COMP_CWORD]}"
+  local flags="--agent --repos --reset --yes --help"
+  local collecting=false
+  local word
+
+  if [[ "${COMP_WORDS[COMP_CWORD - 1]}" == --agent ]]; then
+    # shellcheck disable=SC2207
+    COMPREPLY=($(compgen -W "$(tui --list-agents)" -- "$current"))
+    return 0
+  fi
+
+  for word in "${COMP_WORDS[@]:1:COMP_CWORD-1}"; do
+    case "$word" in
+      --repos) collecting=true ;;
+      -*) collecting=false ;;
+    esac
+  done
+
+  COMPREPLY=()
+
+  if [[ "$collecting" != true || "$current" == -* ]]; then
+    # shellcheck disable=SC2207
+    COMPREPLY=($(compgen -W "$flags" -- "$current"))
+    return 0
+  fi
+
+  # shellcheck disable=SC2207
+  COMPREPLY=($(compgen -W "$(tui --list-repos)" -- "$current"))
+
+  # directory completion only once something is typed, otherwise every directory
+  # in the current one buries the repo list
+  if [[ -n "$current" ]]; then
+    # shellcheck disable=SC2207
+    COMPREPLY+=($(compgen -d -- "$current"))
+  fi
+}
+
+complete -o filenames -F _tui tui
+EOF
+        ;;
+      fish)
+        cat << 'EOF'
+function __tui_list -a what
+    tui --list-$what
+end
+
+complete -c tui -f
+complete -c tui -l agent -x -a '(__tui_list agents)' -d 'Agent for new sessions'
+complete -c tui -l repos -d 'Repos to open, instead of the repos file'
+complete -c tui -l reset -d 'Move the saved session aside, then rebuild'
+complete -c tui -s y -l yes -d 'Skip the reset confirmation'
+complete -c tui -s h -l help -d 'Show help'
+complete -c tui -n '__fish_seen_argument -l repos' -a '(__tui_list repos) (__fish_complete_directories)'
+EOF
+        ;;
+      *)
+        echo "usage: tui completions bash|fish" >&2
+        exit 1
+        ;;
+    esac
+    exit 0
+    ;;
+esac
+
+tui "$@"

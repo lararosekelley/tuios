@@ -1,1 +1,6 @@
 __pycache__/
+
+# runtime signals and caches tuios writes next to its config
+.apply-config
+.reload-themes
+glyphs/
